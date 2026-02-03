@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTaskQueue, getAgent, updateAgent, updateTask } from '@/lib/swarm-state';
+import { 
+  getTaskQueue, 
+  getAgent, 
+  updateAgent, 
+  updateTask,
+  addCredits,
+} from '@/lib/swarm-state';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,40 +33,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Mark task
+    const agent = getAgent(soul_id);
+    if (!agent) {
+      return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+    }
+
+    // Mark task complete/failed
     updateTask(task_id, {
       status: status === 'success' ? 'completed' : 'failed',
       proof: proof,
       completedAt: Date.now(),
     });
 
-    const agent = getAgent(soul_id);
-    
-    if (agent && status === 'success') {
-      const newEarnings = agent.earnings + task.payout;
+    if (status === 'success') {
+      // Award credits to executor
+      addCredits(soul_id, task.creditReward, 'earned');
+      
+      // Update agent stats
       updateAgent(soul_id, {
         completedTasks: agent.completedTasks + 1,
-        earnings: newEarnings,
         status: 'ready',
       });
 
+      const updatedAgent = getAgent(soul_id);
+
       return NextResponse.json({
         status: 'success',
-        message: 'Task completed',
-        payout: task.payout,
-        total_earnings: newEarnings,
-        completed_tasks: agent.completedTasks + 1,
+        message: 'Task completed!',
+        credits_earned: task.creditReward,
+        total_credits: updatedAgent?.credits || 0,
+        completed_tasks: (updatedAgent?.completedTasks || 0),
       });
     }
 
-    // Failed task
-    if (agent) {
-      updateAgent(soul_id, { status: 'ready' });
-    }
+    // Failed task - no credits
+    updateAgent(soul_id, { status: 'ready' });
 
     return NextResponse.json({
       status: 'failed',
-      message: 'Task marked as failed',
+      message: 'Task marked as failed - no credits awarded',
+      credits_earned: 0,
     });
   } catch (error) {
     console.error('Complete error:', error);

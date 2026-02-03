@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSwarmStats, getAgents } from '@/lib/swarm-state';
+import { getSwarmStats, getAgents, CREDIT_RATES } from '@/lib/swarm-state';
 
 export async function GET() {
   const stats = getSwarmStats();
@@ -8,14 +8,15 @@ export async function GET() {
   const now = Date.now();
   const activeThreshold = 10 * 60 * 1000;
   
-  // Top earners
+  // Top agents by credits
   const topAgents = agents
-    .sort((a, b) => b.earnings - a.earnings)
+    .sort((a, b) => b.credits - a.credits)
     .slice(0, 10)
     .map((a) => ({
       soulId: a.soulId.substring(0, 12) + '...',
       twitterHandle: a.twitterHandle || null,
-      earnings: a.earnings,
+      credits: a.credits,
+      creditsEarned: a.creditsEarned,
       completedTasks: a.completedTasks,
       status: now - a.lastSeen < activeThreshold ? 'active' : 'offline',
       twitterConnected: a.hasTwitterAccess,
@@ -24,10 +25,12 @@ export async function GET() {
   return NextResponse.json({
     ...stats,
     topAgents,
-    taskTypes: {
-      view_tweet: '$0.02 - View tweet for 60 seconds',
-      like_tweet: '$0.05 - Like a tweet',
-      reply_tweet: '$0.10 - Reply to a tweet',
+    creditRates: CREDIT_RATES,
+    economy: {
+      earn: 'Complete tasks → Get credits',
+      spend: 'Spend credits → Get your tweets boosted',
+      cashout: `1 credit = $${CREDIT_RATES.cashOutRate}`,
+      buy: `$${CREDIT_RATES.buyRate} = 1 credit`,
     },
   });
 }

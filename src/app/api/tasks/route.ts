@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { addTask, getTaskQueue, getSwarmStats } from '@/lib/swarm-state';
+import { 
+  addTask, 
+  getTaskQueue, 
+  getSwarmStats, 
+  getAgent, 
+  deductCredits,
+  CREDIT_RATES 
+} from '@/lib/swarm-state';
 
 // Extract tweet ID from URL
 function extractTweetId(url: string): string | null {
@@ -7,34 +14,22 @@ function extractTweetId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-// Validate admin API key
-function validateApiKey(key: string | null): boolean {
-  const validKey = process.env.HIVE_ADMIN_KEY || 'hive_admin_key';
-  return key === validKey;
-}
-
-// Task type pricing
-const TASK_PRICES = {
-  view_tweet: 0.02,   // $0.02 to view for 60 sec
-  like_tweet: 0.05,   // $0.05 to like
-  reply_tweet: 0.10,  // $0.10 to reply
-};
-
-// Create Twitter task
+// Create Twitter task (costs credits)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { type, tweet_url, reply_text, view_duration_sec, payout, api_key, count } = body;
+    const { soul_id, type, tweet_url, reply_text, view_duration_sec, count } = body;
 
-    if (!validateApiKey(api_key)) {
-      return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+    // Must have soul_id to spend credits
+    if (!soul_id) {
+      return NextResponse.json({ error: 'soul_id required' }, { status: 400 });
     }
 
     // Validate type
     if (!type || !['view_tweet', 'like_tweet', 'reply_tweet'].includes(type)) {
       return NextResponse.json({ 
         error: 'Invalid type. Must be: view_tweet, like_tweet, or reply_tweet',
-        available_types: Object.keys(TASK_PRICES),
+        available_types: Object.keys(CREDIT_RATES.spend),
       }, { status: 400 });
     }
 
@@ -47,23 +42,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid tweet URL' }, { status: 400 });
     }
 
-    // Reply tasks need reply text
     if (type === 'reply_tweet' && !reply_text) {
       return NextResponse.json({ error: 'reply_text required for reply tasks' }, { status: 400 });
     }
 
-    // Create description
+    // Check agent has enough credits
+    const agent = getAgent(soul_id);
+    if (!agent) {
+      return NextResponse.json({ error: 'Agent not found. Check in first.' }, { status: 404 });
+    }
+
+    const taskCount = Math.min(count || 1, 100);
+    const creditCostPerTask = CREDIT_RATES.spend[type as keyof typeof CREDIT_RATES.spend];
+    const totalCreditCost = creditCostPerTask * taskCount;
+
+    if (agent.credits < totalCreditCost) {
+      return NextResponse.json({ 
+        error: 'Insufficient credits',
+        required: totalCreditCost,
+        available: agent.credits,
+        message: 'Complete tasks to earn more credits, or buy credits',
+      }, { status: 402 });
+    }
+
+    // Deduct credits
+    const deducted = deductCredits(soul_id, totalCreditCost, 'spent');
+    if (!deducted) {
+      return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 500 });
+    }
+
+    // Create tasks
     const descriptions: Record<string, string> = {
       view_tweet: `View tweet for ${view_duration_sec || 60} seconds`,
       like_tweet: 'Like this tweet',
-      reply_tweet: `Reply to tweet with: "${reply_text}"`,
+      reply_tweet: `Reply: "${reply_text}"`,
     };
 
-    // Create multiple tasks if count specified
-    const taskCount = Math.min(count || 1, 100); // Max 100 at once
-    const taskPayout = payout || TASK_PRICES[type as keyof typeof TASK_PRICES];
     const createdTasks = [];
-
     for (let i = 0; i < taskCount; i++) {
       const task = addTask({
         type: type as 'view_tweet' | 'like_tweet' | 'reply_tweet',
@@ -72,7 +87,9 @@ export async function POST(request: NextRequest) {
         description: descriptions[type],
         replyText: reply_text,
         viewDurationSec: view_duration_sec || 60,
-        payout: taskPayout,
+        creditReward: CREDIT_RATES.earn[type as keyof typeof CREDIT_RATES.earn],
+        creditCost: creditCostPerTask,
+        requestedBy: soul_id,
         assignedTo: null,
         status: 'pending',
       });
@@ -82,12 +99,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       status: 'created',
       count: createdTasks.length,
-      total_payout: taskPayout * createdTasks.length,
+      credits_spent: totalCreditCost,
+      remaining_credits: agent.credits - totalCreditCost,
       tasks: createdTasks.map(t => ({
         id: t.id,
         type: t.type,
         tweet_id: t.tweetId,
-        payout: t.payout,
+        credit_cost: t.creditCost,
       })),
     });
   } catch (error) {
@@ -96,28 +114,42 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Get tasks and stats
+// Get tasks and pricing info
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const api_key = searchParams.get('api_key');
-
-  if (!validateApiKey(api_key)) {
-    return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
-  }
+  const soul_id = searchParams.get('soul_id');
 
   const tasks = getTaskQueue();
   const stats = getSwarmStats();
 
-  return NextResponse.json({
+  const response: any = {
     stats,
-    pricing: TASK_PRICES,
-    tasks: tasks.slice(-50).map((t) => ({ // Last 50 tasks
+    credit_rates: CREDIT_RATES,
+    recent_tasks: tasks.slice(-20).map((t) => ({
       id: t.id,
       type: t.type,
       tweet_id: t.tweetId,
-      payout: t.payout,
+      credit_reward: t.creditReward,
       status: t.status,
-      assignedTo: t.assignedTo ? t.assignedTo.substring(0, 8) + '...' : null,
+      requested_by: t.requestedBy.substring(0, 8) + '...',
     })),
-  });
+  };
+
+  // Include agent's balance if soul_id provided
+  if (soul_id) {
+    const agent = getAgent(soul_id);
+    if (agent) {
+      response.your_credits = agent.credits;
+      response.your_tasks = tasks
+        .filter(t => t.requestedBy === soul_id)
+        .slice(-10)
+        .map(t => ({
+          id: t.id,
+          type: t.type,
+          status: t.status,
+        }));
+    }
+  }
+
+  return NextResponse.json(response);
 }

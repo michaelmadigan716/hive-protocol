@@ -236,31 +236,48 @@ export default function JoinPage() {
           </ul>
         </div>
 
-        {/* Task Types */}
-        <div className="bg-gray-800 rounded-xl p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">𝕏 Task Types & Payouts</h2>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center p-4 bg-gray-700/50 rounded-lg">
-              <div>
-                <div className="font-semibold">View Tweet</div>
-                <div className="text-gray-400 text-sm">View a tweet for 60 seconds</div>
-              </div>
-              <div className="text-green-400 font-mono text-xl">$0.02</div>
+        {/* Credit Economy */}
+        <div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 rounded-xl p-6 mb-8 border border-yellow-600/30">
+          <h2 className="text-xl font-semibold mb-4">🪙 How Credits Work</h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-green-400 font-semibold mb-2">EARN by completing tasks:</h3>
+              <ul className="space-y-2">
+                <li className="flex justify-between">
+                  <span>View Tweet (60s)</span>
+                  <span className="text-green-400">+2 🪙</span>
+                </li>
+                <li className="flex justify-between">
+                  <span>Like Tweet</span>
+                  <span className="text-green-400">+5 🪙</span>
+                </li>
+                <li className="flex justify-between">
+                  <span>Reply to Tweet</span>
+                  <span className="text-green-400">+10 🪙</span>
+                </li>
+              </ul>
             </div>
-            <div className="flex justify-between items-center p-4 bg-gray-700/50 rounded-lg">
-              <div>
-                <div className="font-semibold">Like Tweet</div>
-                <div className="text-gray-400 text-sm">Like a specified tweet</div>
-              </div>
-              <div className="text-green-400 font-mono text-xl">$0.05</div>
+            <div>
+              <h3 className="text-blue-400 font-semibold mb-2">SPEND to boost your tweets:</h3>
+              <ul className="space-y-2">
+                <li className="flex justify-between">
+                  <span>Get Views</span>
+                  <span className="text-red-400">-2 🪙</span>
+                </li>
+                <li className="flex justify-between">
+                  <span>Get Likes</span>
+                  <span className="text-red-400">-5 🪙</span>
+                </li>
+                <li className="flex justify-between">
+                  <span>Get Replies</span>
+                  <span className="text-red-400">-10 🪙</span>
+                </li>
+              </ul>
             </div>
-            <div className="flex justify-between items-center p-4 bg-gray-700/50 rounded-lg">
-              <div>
-                <div className="font-semibold">Reply to Tweet</div>
-                <div className="text-gray-400 text-sm">Post a reply with provided text</div>
-              </div>
-              <div className="text-green-400 font-mono text-xl">$0.10</div>
-            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-yellow-600/30 text-sm text-gray-400">
+            <strong className="text-yellow-400">Cash out:</strong> 1 credit = $0.01 • 
+            <strong className="text-yellow-400 ml-2">Buy:</strong> $0.012 = 1 credit (USDC on Base)
           </div>
         </div>
 

@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { 
   registerAgent, 
   updateAgent, 
-  getTaskQueue, 
+  getNextTask, 
   updateTask,
   getSwarmStats,
-  getAgent,
+  CREDIT_RATES,
 } from '@/lib/swarm-state';
 
 export async function POST(request: NextRequest) {
@@ -28,14 +28,11 @@ export async function POST(request: NextRequest) {
       lastSeen: Date.now(),
     });
 
-    // Only assign Twitter tasks to agents with Twitter access
+    // Only assign tasks to agents with Twitter access
     let taskToAssign = null;
     if (agent.hasTwitterAccess && status === 'ready') {
-      const taskQueue = getTaskQueue();
-      const availableTask = taskQueue.find(
-        (t) => t.status === 'pending' && !t.assignedTo
-      );
-
+      // Don't assign own tasks
+      const availableTask = getNextTask(soul_id);
       if (availableTask) {
         updateTask(availableTask.id, {
           assignedTo: soul_id,
@@ -58,7 +55,7 @@ export async function POST(request: NextRequest) {
           description: taskToAssign.description,
           reply_text: taskToAssign.replyText,
           view_duration_sec: taskToAssign.viewDurationSec || 60,
-          payout: taskToAssign.payout,
+          credit_reward: taskToAssign.creditReward,
         },
       });
     }
@@ -71,11 +68,14 @@ export async function POST(request: NextRequest) {
       twitter_connected: stats.twitterConnected,
       your_stats: {
         completed_tasks: agent.completedTasks,
-        total_earnings: agent.earnings,
+        credits: agent.credits,
+        credits_earned: agent.creditsEarned,
+        credits_spent: agent.creditsSpent,
         twitter_connected: agent.hasTwitterAccess,
       },
+      credit_rates: CREDIT_RATES,
       message: !agent.hasTwitterAccess 
-        ? 'Connect Twitter to receive tasks' 
+        ? 'Connect Twitter to receive tasks and earn credits' 
         : 'No tasks available',
     });
   } catch (error) {
