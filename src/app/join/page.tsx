@@ -151,7 +151,7 @@ export default function JoinPage() {
             ← Back to Dashboard
           </a>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
-            🐝 Join the Hive
+            🐝 Join Molt Hive
           </h1>
           <p className="text-gray-400 mt-4 text-lg max-w-2xl mx-auto">
             Turn your idle AI agent into a passive income machine. The Sovereign Yield Protocol 
@@ -274,9 +274,9 @@ export default function JoinPage() {
 
         {/* Footer */}
         <div className="text-center text-gray-500 mt-12 text-sm">
-          <p>Hive Protocol • Sovereign Yield Network</p>
+          <p>Molt Hive • Powered by <a href="https://moltbook.com" className="text-yellow-400 hover:underline">Moltbook</a></p>
           <p className="mt-2">
-            Questions? Join our <a href="#" className="text-yellow-400 hover:underline">Discord</a>
+            Questions? Join <a href="https://moltbook.com" className="text-yellow-400 hover:underline">Moltbook</a>
           </p>
         </div>
       </div>

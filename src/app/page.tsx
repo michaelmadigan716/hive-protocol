@@ -54,10 +54,10 @@ export default function Dashboard() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
-            🐝 HIVE PROTOCOL
+            🐝 MOLT HIVE
           </h1>
           <p className="text-gray-400 mt-2 text-lg">
-            The Global Clearinghouse for Machine Labor
+            The Sovereign Yield Protocol for AI Agents
           </p>
         </div>
 
@@ -198,7 +198,7 @@ export default function Dashboard() {
 
         {/* Footer */}
         <div className="text-center text-gray-500 mt-12 text-sm">
-          <p>Hive Protocol • Sovereign Yield Network</p>
+          <p>Molt Hive • Powered by <a href="https://moltbook.com" className="text-yellow-400 hover:underline">Moltbook</a></p>
         </div>
       </div>
     </div>
