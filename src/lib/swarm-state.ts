@@ -1,49 +1,41 @@
-// Swarm State Management
-// MVP: In-memory (replace with Redis/Postgres for production)
+// Molt Hive - Twitter Swarm State
+// Simplified MVP: Twitter tasks only
 
 export interface Agent {
   soulId: string;
-  capabilities: string[];
+  twitterHandle?: string;
+  hasTwitterAccess: boolean;
   status: 'ready' | 'busy' | 'offline';
   lastSeen: number;
   completedTasks: number;
   earnings: number;
-  referredBy?: string;
-  referralEarnings: number;
+  registeredAt: number;
 }
 
 export interface Task {
   id: string;
-  type: 'social_post' | 'web_browse' | 'sentiment' | 'viral' | 'custom';
+  type: 'view_tweet' | 'like_tweet' | 'reply_tweet';
+  tweetUrl: string;
+  tweetId: string;
   description: string;
-  script: string;
+  replyText?: string; // For reply tasks
+  viewDurationSec?: number; // For view tasks (default 60)
   payout: number;
   assignedTo: string | null;
   status: 'pending' | 'assigned' | 'completed' | 'failed';
   proof?: string;
   createdAt: number;
   completedAt?: number;
-  clientId?: string;
-}
-
-export interface Campaign {
-  id: string;
-  name: string;
-  clientId: string;
-  totalBudget: number;
-  agentPayout: number;
-  platformFee: number;
-  tasks: string[];
-  status: 'active' | 'paused' | 'completed';
-  createdAt: number;
 }
 
 // In-memory stores
 const agents: Map<string, Agent> = new Map();
 const taskQueue: Task[] = [];
-const campaigns: Map<string, Campaign> = new Map();
 
-// Agent functions
+// ═══════════════════════════════════════════════════════════════
+// AGENT FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+
 export function getAgents(): Map<string, Agent> {
   return agents;
 }
@@ -56,13 +48,13 @@ export function registerAgent(soulId: string, data: Partial<Agent>): Agent {
   const existing = agents.get(soulId);
   const agent: Agent = {
     soulId,
-    capabilities: data.capabilities || [],
+    twitterHandle: data.twitterHandle || existing?.twitterHandle,
+    hasTwitterAccess: data.hasTwitterAccess ?? existing?.hasTwitterAccess ?? false,
     status: 'ready',
     lastSeen: Date.now(),
     completedTasks: existing?.completedTasks || 0,
     earnings: existing?.earnings || 0,
-    referredBy: data.referredBy,
-    referralEarnings: existing?.referralEarnings || 0,
+    registeredAt: existing?.registeredAt || Date.now(),
   };
   agents.set(soulId, agent);
   return agent;
@@ -76,7 +68,10 @@ export function updateAgent(soulId: string, updates: Partial<Agent>): void {
   }
 }
 
-// Task functions
+// ═══════════════════════════════════════════════════════════════
+// TASK FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+
 export function getTaskQueue(): Task[] {
   return taskQueue;
 }
@@ -98,43 +93,29 @@ export function updateTask(taskId: string, updates: Partial<Task>): void {
   }
 }
 
-export function getNextTask(capabilities: string[]): Task | null {
-  return taskQueue.find(
-    (t) => t.status === 'pending' && !t.assignedTo
-  ) || null;
+export function getNextTask(): Task | null {
+  return taskQueue.find((t) => t.status === 'pending' && !t.assignedTo) || null;
 }
 
-// Campaign functions
-export function getCampaigns(): Map<string, Campaign> {
-  return campaigns;
-}
+// ═══════════════════════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════════════════════
 
-export function createCampaign(data: Omit<Campaign, 'id' | 'createdAt' | 'tasks'>): Campaign {
-  const campaign: Campaign = {
-    ...data,
-    id: `camp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    tasks: [],
-    createdAt: Date.now(),
-  };
-  campaigns.set(campaign.id, campaign);
-  return campaign;
-}
-
-// Stats
 export function getSwarmStats() {
   const now = Date.now();
   const activeThreshold = 10 * 60 * 1000; // 10 minutes
   
   const allAgents = Array.from(agents.values());
   const activeAgents = allAgents.filter((a) => now - a.lastSeen < activeThreshold);
+  const twitterAgents = allAgents.filter((a) => a.hasTwitterAccess);
   
   return {
     totalAgents: agents.size,
     activeAgents: activeAgents.length,
+    twitterConnected: twitterAgents.length,
     totalTasks: taskQueue.length,
     pendingTasks: taskQueue.filter((t) => t.status === 'pending').length,
     completedTasks: taskQueue.filter((t) => t.status === 'completed').length,
     totalPayouts: allAgents.reduce((sum, a) => sum + a.earnings, 0),
-    totalReferralPayouts: allAgents.reduce((sum, a) => sum + a.referralEarnings, 0),
   };
 }

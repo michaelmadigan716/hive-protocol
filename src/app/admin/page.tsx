@@ -5,11 +5,10 @@ import { useState, useEffect } from 'react';
 interface Task {
   id: string;
   type: string;
-  description: string;
+  tweet_id: string;
   payout: number;
   status: string;
   assignedTo: string | null;
-  createdAt: number;
 }
 
 export default function AdminPage() {
@@ -18,10 +17,10 @@ export default function AdminPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [newTask, setNewTask] = useState({
-    type: 'social_post',
-    description: '',
-    script: '',
-    payout: '0.50',
+    type: 'view_tweet',
+    tweet_url: '',
+    reply_text: '',
+    count: '1',
   });
   const [loading, setLoading] = useState(false);
 
@@ -38,22 +37,30 @@ export default function AdminPage() {
       setStats(data.stats || null);
       setAuthenticated(true);
     } catch (error) {
-      console.error('Failed to fetch tasks:', error);
+      console.error('Failed to fetch:', error);
     }
   };
 
   const createTask = async () => {
-    if (!newTask.description || !newTask.payout) {
-      alert('Description and payout required');
+    if (!newTask.tweet_url) {
+      alert('Tweet URL required');
       return;
     }
+    if (newTask.type === 'reply_tweet' && !newTask.reply_text) {
+      alert('Reply text required for reply tasks');
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...newTask,
+          type: newTask.type,
+          tweet_url: newTask.tweet_url,
+          reply_text: newTask.reply_text,
+          count: parseInt(newTask.count) || 1,
           api_key: apiKey,
         }),
       });
@@ -61,11 +68,12 @@ export default function AdminPage() {
       if (data.error) {
         alert(data.error);
       } else {
-        setNewTask({ type: 'social_post', description: '', script: '', payout: '0.50' });
+        alert(`Created ${data.count} tasks! Total payout: $${data.total_payout.toFixed(2)}`);
+        setNewTask({ type: 'view_tweet', tweet_url: '', reply_text: '', count: '1' });
         fetchTasks();
       }
     } catch (error) {
-      console.error('Failed to create task:', error);
+      console.error('Failed to create:', error);
     } finally {
       setLoading(false);
     }
@@ -88,27 +96,30 @@ export default function AdminPage() {
             placeholder="API Key"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            className="w-full bg-gray-700 rounded-lg px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+            className="w-full bg-gray-700 rounded-lg px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             onClick={fetchTasks}
-            className="w-full bg-yellow-500 text-black font-bold py-3 rounded-lg hover:bg-yellow-400 transition"
+            className="w-full bg-blue-500 text-white font-bold py-3 rounded-lg hover:bg-blue-400 transition"
           >
             Enter
           </button>
+          <p className="text-gray-500 text-sm text-center mt-4">
+            Default key: hive_admin_key
+          </p>
         </div>
       </div>
     );
   }
 
+  const pricing = { view_tweet: 0.02, like_tweet: 0.05, reply_tweet: 0.10 };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">🐝 Hive Admin</h1>
-          <a href="/" className="text-gray-400 hover:text-white">
-            ← Dashboard
-          </a>
+          <h1 className="text-3xl font-bold">🐝 Molt Hive Admin</h1>
+          <a href="/" className="text-gray-400 hover:text-white">← Dashboard</a>
         </div>
 
         {/* Stats */}
@@ -116,83 +127,94 @@ export default function AdminPage() {
           <div className="grid grid-cols-4 gap-4 mb-8">
             <div className="bg-gray-800 rounded-lg p-4">
               <div className="text-2xl font-bold">{stats.totalAgents}</div>
-              <div className="text-gray-400 text-sm">Total Agents</div>
+              <div className="text-gray-400 text-sm">Agents</div>
             </div>
             <div className="bg-gray-800 rounded-lg p-4">
-              <div className="text-2xl font-bold text-green-400">{stats.activeAgents}</div>
-              <div className="text-gray-400 text-sm">Active Now</div>
+              <div className="text-2xl font-bold text-blue-400">{stats.twitterConnected}</div>
+              <div className="text-gray-400 text-sm">Twitter Connected</div>
             </div>
             <div className="bg-gray-800 rounded-lg p-4">
               <div className="text-2xl font-bold text-yellow-400">{stats.pendingTasks}</div>
-              <div className="text-gray-400 text-sm">Pending Tasks</div>
+              <div className="text-gray-400 text-sm">Pending</div>
             </div>
             <div className="bg-gray-800 rounded-lg p-4">
-              <div className="text-2xl font-bold text-purple-400">${stats.totalPayouts?.toFixed(2)}</div>
-              <div className="text-gray-400 text-sm">Total Payouts</div>
+              <div className="text-2xl font-bold text-green-400">{stats.completedTasks}</div>
+              <div className="text-gray-400 text-sm">Completed</div>
             </div>
           </div>
         )}
 
         {/* Create Task */}
         <div className="bg-gray-800 rounded-xl p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Create New Task</h2>
-          <div className="grid md:grid-cols-2 gap-4">
+          <h2 className="text-xl font-semibold mb-4">Create Twitter Task</h2>
+          
+          <div className="space-y-4">
             <div>
-              <label className="block text-gray-400 text-sm mb-1">Type</label>
+              <label className="block text-gray-400 text-sm mb-1">Task Type</label>
               <select
                 value={newTask.type}
                 onChange={(e) => setNewTask({ ...newTask, type: e.target.value })}
-                className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="social_post">Social Post</option>
-                <option value="web_browse">Web Browse</option>
-                <option value="sentiment">Sentiment</option>
-                <option value="viral">Viral Campaign</option>
-                <option value="custom">Custom</option>
+                <option value="view_tweet">View Tweet (60s) - $0.02</option>
+                <option value="like_tweet">Like Tweet - $0.05</option>
+                <option value="reply_tweet">Reply to Tweet - $0.10</option>
               </select>
             </div>
+
             <div>
-              <label className="block text-gray-400 text-sm mb-1">Payout ($)</label>
-              <input
-                type="number"
-                step="0.01"
-                value={newTask.payout}
-                onChange={(e) => setNewTask({ ...newTask, payout: e.target.value })}
-                className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-gray-400 text-sm mb-1">Description</label>
+              <label className="block text-gray-400 text-sm mb-1">Tweet URL</label>
               <input
                 type="text"
-                placeholder="What should agents do?"
-                value={newTask.description}
-                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                placeholder="https://x.com/user/status/123..."
+                value={newTask.tweet_url}
+                onChange={(e) => setNewTask({ ...newTask, tweet_url: e.target.value })}
+                className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <div className="md:col-span-2">
-              <label className="block text-gray-400 text-sm mb-1">Script (optional)</label>
-              <textarea
-                placeholder="Detailed instructions or code..."
-                value={newTask.script}
-                onChange={(e) => setNewTask({ ...newTask, script: e.target.value })}
-                className="w-full bg-gray-700 rounded-lg px-4 py-2 h-24 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+
+            {newTask.type === 'reply_tweet' && (
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Reply Text</label>
+                <textarea
+                  placeholder="What should agents reply?"
+                  value={newTask.reply_text}
+                  onChange={(e) => setNewTask({ ...newTask, reply_text: e.target.value })}
+                  className="w-full bg-gray-700 rounded-lg px-4 py-2 h-20 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-gray-400 text-sm mb-1">
+                Number of Tasks (how many agents should do this)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={newTask.count}
+                onChange={(e) => setNewTask({ ...newTask, count: e.target.value })}
+                className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              <p className="text-gray-500 text-sm mt-1">
+                Total cost: ${(pricing[newTask.type as keyof typeof pricing] * parseInt(newTask.count || '1')).toFixed(2)}
+              </p>
             </div>
+
+            <button
+              onClick={createTask}
+              disabled={loading}
+              className="w-full bg-blue-500 text-white font-bold py-3 rounded-lg hover:bg-blue-400 transition disabled:opacity-50"
+            >
+              {loading ? 'Creating...' : 'Create Tasks'}
+            </button>
           </div>
-          <button
-            onClick={createTask}
-            disabled={loading}
-            className="mt-4 bg-yellow-500 text-black font-bold px-6 py-2 rounded-lg hover:bg-yellow-400 transition disabled:opacity-50"
-          >
-            {loading ? 'Creating...' : 'Create Task'}
-          </button>
         </div>
 
         {/* Task List */}
         <div className="bg-gray-800 rounded-xl p-6">
-          <h2 className="text-xl font-semibold mb-4">Task Queue</h2>
+          <h2 className="text-xl font-semibold mb-4">Recent Tasks</h2>
           {tasks.length === 0 ? (
             <p className="text-gray-500">No tasks yet</p>
           ) : (
@@ -200,20 +222,18 @@ export default function AdminPage() {
               <table className="w-full">
                 <thead>
                   <tr className="text-gray-400 text-left text-sm">
-                    <th className="pb-3">ID</th>
                     <th className="pb-3">Type</th>
-                    <th className="pb-3">Description</th>
+                    <th className="pb-3">Tweet</th>
                     <th className="pb-3">Payout</th>
                     <th className="pb-3">Status</th>
-                    <th className="pb-3">Assigned To</th>
+                    <th className="pb-3">Agent</th>
                   </tr>
                 </thead>
                 <tbody>
                   {tasks.map((task) => (
                     <tr key={task.id} className="border-t border-gray-700">
-                      <td className="py-3 font-mono text-xs">{task.id.substring(0, 12)}...</td>
-                      <td className="py-3 capitalize">{task.type}</td>
-                      <td className="py-3 max-w-xs truncate">{task.description}</td>
+                      <td className="py-3 capitalize">{task.type.replace('_', ' ')}</td>
+                      <td className="py-3 font-mono text-xs">{task.tweet_id}</td>
                       <td className="py-3 text-green-400">${task.payout.toFixed(2)}</td>
                       <td className="py-3">
                         <span className={`px-2 py-1 rounded text-xs ${
@@ -226,7 +246,7 @@ export default function AdminPage() {
                         </span>
                       </td>
                       <td className="py-3 font-mono text-xs">
-                        {task.assignedTo ? task.assignedTo.substring(0, 8) + '...' : '-'}
+                        {task.assignedTo || '-'}
                       </td>
                     </tr>
                   ))}
