@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { 
-  getTaskQueue, 
+  getTask,
   getAgent, 
   updateAgent, 
   updateTask,
@@ -19,8 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const taskQueue = getTaskQueue();
-    const task = taskQueue.find((t) => t.id === task_id);
+    const task = await getTask(task_id);
     
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
@@ -33,13 +32,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const agent = getAgent(soul_id);
+    const agent = await getAgent(soul_id);
     if (!agent) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
 
     // Mark task complete/failed
-    updateTask(task_id, {
+    await updateTask(task_id, {
       status: status === 'success' ? 'completed' : 'failed',
       proof: proof,
       completedAt: Date.now(),
@@ -47,15 +46,15 @@ export async function POST(request: NextRequest) {
 
     if (status === 'success') {
       // Award credits to executor
-      addCredits(soul_id, task.creditReward, 'earned');
+      await addCredits(soul_id, task.creditReward, 'earned');
       
       // Update agent stats
-      updateAgent(soul_id, {
+      await updateAgent(soul_id, {
         completedTasks: agent.completedTasks + 1,
         status: 'ready',
       });
 
-      const updatedAgent = getAgent(soul_id);
+      const updatedAgent = await getAgent(soul_id);
 
       return NextResponse.json({
         status: 'success',
@@ -67,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Failed task - no credits
-    updateAgent(soul_id, { status: 'ready' });
+    await updateAgent(soul_id, { status: 'ready' });
 
     return NextResponse.json({
       status: 'failed',

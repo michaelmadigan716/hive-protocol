@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { getSwarmStats, getAgents, CREDIT_RATES } from '@/lib/swarm-state';
 
 export async function GET() {
-  const stats = getSwarmStats();
-  const agents = Array.from(getAgents().values());
+  const stats = await getSwarmStats();
+  const agentsMap = await getAgents();
+  const agents = Array.from(agentsMap.values());
   
   const now = Date.now();
   const activeThreshold = 10 * 60 * 1000;

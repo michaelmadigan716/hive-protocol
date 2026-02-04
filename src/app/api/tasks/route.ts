@@ -18,7 +18,7 @@ function extractTweetId(url: string): string | null {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { soul_id, type, tweet_url, reply_text, view_duration_sec, count } = body;
+    const { soul_id, type, tweet_url, reply_text, view_duration_sec, count, post_content, post_topic } = body;
 
     // Must have soul_id to spend credits
     if (!soul_id) {
@@ -26,28 +26,41 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate type
-    if (!type || !['view_tweet', 'like_tweet', 'reply_tweet'].includes(type)) {
+    const validTypes = ['view_tweet', 'like_tweet', 'reply_tweet', 'post_tweet'];
+    if (!type || !validTypes.includes(type)) {
       return NextResponse.json({ 
-        error: 'Invalid type. Must be: view_tweet, like_tweet, or reply_tweet',
-        available_types: Object.keys(CREDIT_RATES.spend),
+        error: 'Invalid type. Must be: view_tweet, like_tweet, reply_tweet, or post_tweet',
+        available_types: validTypes,
       }, { status: 400 });
     }
 
-    if (!tweet_url) {
-      return NextResponse.json({ error: 'tweet_url required' }, { status: 400 });
+    // Engagement tasks require tweet_url
+    if (type !== 'post_tweet') {
+      if (!tweet_url) {
+        return NextResponse.json({ error: 'tweet_url required for engagement tasks' }, { status: 400 });
+      }
+
+      const tweetId = extractTweetId(tweet_url);
+      if (!tweetId) {
+        return NextResponse.json({ error: 'Invalid tweet URL' }, { status: 400 });
+      }
     }
 
-    const tweetId = extractTweetId(tweet_url);
-    if (!tweetId) {
-      return NextResponse.json({ error: 'Invalid tweet URL' }, { status: 400 });
-    }
-
+    // Reply tasks require reply_text
     if (type === 'reply_tweet' && !reply_text) {
       return NextResponse.json({ error: 'reply_text required for reply tasks' }, { status: 400 });
     }
 
+    // Post tasks require content or topic
+    if (type === 'post_tweet' && !post_content && !post_topic) {
+      return NextResponse.json({ 
+        error: 'post_content or post_topic required for post tasks',
+        hint: 'Provide exact content to post, or a topic for the agent to write about'
+      }, { status: 400 });
+    }
+
     // Check agent has enough credits
-    const agent = getAgent(soul_id);
+    const agent = await getAgent(soul_id);
     if (!agent) {
       return NextResponse.json({ error: 'Agent not found. Check in first.' }, { status: 404 });
     }
@@ -66,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Deduct credits
-    const deducted = deductCredits(soul_id, totalCreditCost, 'spent');
+    const deducted = await deductCredits(soul_id, totalCreditCost, 'spent');
     if (!deducted) {
       return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 500 });
     }
@@ -76,16 +89,23 @@ export async function POST(request: NextRequest) {
       view_tweet: `View tweet for ${view_duration_sec || 60} seconds`,
       like_tweet: 'Like this tweet',
       reply_tweet: `Reply: "${reply_text}"`,
+      post_tweet: post_content 
+        ? `Post tweet: "${post_content.substring(0, 50)}${post_content.length > 50 ? '...' : ''}"`
+        : `Write and post about: ${post_topic}`,
     };
 
     const createdTasks = [];
     for (let i = 0; i < taskCount; i++) {
-      const task = addTask({
-        type: type as 'view_tweet' | 'like_tweet' | 'reply_tweet',
-        tweetUrl: tweet_url,
+      const tweetId = type === 'post_tweet' ? '' : extractTweetId(tweet_url)!;
+      
+      const task = await addTask({
+        type: type as 'view_tweet' | 'like_tweet' | 'reply_tweet' | 'post_tweet',
+        tweetUrl: tweet_url || '',
         tweetId,
         description: descriptions[type],
         replyText: reply_text,
+        postContent: post_content,
+        postTopic: post_topic,
         viewDurationSec: view_duration_sec || 60,
         creditReward: CREDIT_RATES.earn[type as keyof typeof CREDIT_RATES.earn],
         creditCost: creditCostPerTask,
@@ -104,7 +124,8 @@ export async function POST(request: NextRequest) {
       tasks: createdTasks.map(t => ({
         id: t.id,
         type: t.type,
-        tweet_id: t.tweetId,
+        tweet_id: t.tweetId || null,
+        post_topic: t.postTopic || null,
         credit_cost: t.creditCost,
       })),
     });
@@ -119,16 +140,17 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const soul_id = searchParams.get('soul_id');
 
-  const tasks = getTaskQueue();
-  const stats = getSwarmStats();
+  const tasks = await getTaskQueue();
+  const stats = await getSwarmStats();
 
-  const response: any = {
+  const response: Record<string, unknown> = {
     stats,
     credit_rates: CREDIT_RATES,
     recent_tasks: tasks.slice(-20).map((t) => ({
       id: t.id,
       type: t.type,
-      tweet_id: t.tweetId,
+      tweet_id: t.tweetId || null,
+      post_topic: t.postTopic || null,
       credit_reward: t.creditReward,
       status: t.status,
       requested_by: t.requestedBy.substring(0, 8) + '...',
@@ -137,7 +159,7 @@ export async function GET(request: NextRequest) {
 
   // Include agent's balance if soul_id provided
   if (soul_id) {
-    const agent = getAgent(soul_id);
+    const agent = await getAgent(soul_id);
     if (agent) {
       response.your_credits = agent.credits;
       response.your_tasks = tasks

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const soul_id = searchParams.get('soul_id');
 
-  const response: any = {
+  const response: Record<string, unknown> = {
     rates: {
       earn: CREDIT_RATES.earn,
       spend: CREDIT_RATES.spend,
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   };
 
   if (soul_id) {
-    const agent = getAgent(soul_id);
+    const agent = await getAgent(soul_id);
     if (agent) {
       response.balance = {
         credits: agent.credits,
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'soul_id and action required' }, { status: 400 });
     }
 
-    const agent = getAgent(soul_id);
+    const agent = await getAgent(soul_id);
     if (!agent) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
@@ -77,13 +77,13 @@ export async function POST(request: NextRequest) {
           message: 'Send payment to complete purchase',
           amount: amount,
           cost_usd: amount * CREDIT_RATES.buyRate,
-          wallet: 'YOUR_USDC_WALLET_HERE', // TODO: Add real wallet
+          wallet: '0xbeA0895a832d591849124b6F20206492f7A5Dec0', // USDC on Base
           instructions: 'Send USDC on Base, then call again with payment_proof (tx hash)',
         });
       }
 
       // Credit the account (in production, verify tx first)
-      addCredits(soul_id, amount, 'purchased');
+      await addCredits(soul_id, amount, 'purchased');
       
       return NextResponse.json({
         status: 'success',
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Deduct credits
-      const success = deductCredits(soul_id, amount, 'cashout');
+      const success = await deductCredits(soul_id, amount, 'cashout');
       if (!success) {
         return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 500 });
       }

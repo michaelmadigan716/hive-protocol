@@ -1,90 +1,59 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
-interface Task {
-  id: string;
-  type: string;
-  tweet_id: string;
-  payout: number;
-  status: string;
-  assignedTo: string | null;
+interface SwarmStats {
+  totalAgents: number;
+  activeAgents: number;
+  twitterConnected: number;
+  totalTasks: number;
+  pendingTasks: number;
+  completedTasks: number;
+  totalCreditsInCirculation: number;
+  totalCreditsEarned: number;
+  totalCreditsSpent: number;
+  topAgents: Array<{
+    soulId: string;
+    twitterHandle: string | null;
+    credits: number;
+    creditsEarned: number;
+    completedTasks: number;
+    status: string;
+    twitterConnected: boolean;
+  }>;
 }
 
 export default function AdminPage() {
   const [apiKey, setApiKey] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [newTask, setNewTask] = useState({
-    type: 'view_tweet',
-    tweet_url: '',
-    reply_text: '',
-    count: '1',
-  });
-  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState<SwarmStats | null>(null);
 
-  const fetchTasks = async () => {
-    if (!apiKey) return;
-    try {
-      const res = await fetch(`/api/tasks?api_key=${apiKey}`);
-      const data = await res.json();
-      if (data.error) {
-        alert(data.error);
-        return;
-      }
-      setTasks(data.tasks || []);
-      setStats(data.stats || null);
+  const authenticate = () => {
+    if (apiKey === '123') {
       setAuthenticated(true);
-    } catch (error) {
-      console.error('Failed to fetch:', error);
+      fetchStats();
+    } else {
+      alert('Invalid key');
     }
   };
 
-  const createTask = async () => {
-    if (!newTask.tweet_url) {
-      alert('Tweet URL required');
-      return;
-    }
-    if (newTask.type === 'reply_tweet' && !newTask.reply_text) {
-      alert('Reply text required for reply tasks');
-      return;
-    }
-    
-    setLoading(true);
+  const fetchStats = async () => {
     try {
-      const res = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: newTask.type,
-          tweet_url: newTask.tweet_url,
-          reply_text: newTask.reply_text,
-          count: parseInt(newTask.count) || 1,
-          api_key: apiKey,
-        }),
-      });
+      const res = await fetch('/api/stats');
       const data = await res.json();
-      if (data.error) {
-        alert(data.error);
-      } else {
-        alert(`Created ${data.count} tasks! Total payout: $${data.total_payout.toFixed(2)}`);
-        setNewTask({ type: 'view_tweet', tweet_url: '', reply_text: '', count: '1' });
-        fetchTasks();
-      }
+      setStats(data);
     } catch (error) {
-      console.error('Failed to create:', error);
-    } finally {
-      setLoading(false);
+      console.error('Failed to fetch stats:', error);
     }
   };
 
   useEffect(() => {
     if (authenticated) {
-      const interval = setInterval(fetchTasks, 10000);
+      const interval = setInterval(fetchStats, 10000);
       return () => clearInterval(interval);
     }
-  }, [authenticated, apiKey]);
+  }, [authenticated]);
 
   if (!authenticated) {
     return (
@@ -93,166 +62,160 @@ export default function AdminPage() {
           <h1 className="text-2xl font-bold mb-6 text-center">🔐 Admin Access</h1>
           <input
             type="password"
-            placeholder="API Key"
+            placeholder="Admin Key"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && authenticate()}
             className="w-full bg-gray-700 rounded-lg px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
-            onClick={fetchTasks}
+            onClick={authenticate}
             className="w-full bg-blue-500 text-white font-bold py-3 rounded-lg hover:bg-blue-400 transition"
           >
             Enter
           </button>
-          <p className="text-gray-500 text-sm text-center mt-4">
-            Default key: hive_admin_key
-          </p>
         </div>
       </div>
     );
   }
 
-  const pricing = { view_tweet: 0.02, like_tweet: 0.05, reply_tweet: 0.10 };
-
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">🐝 Molt Hive Admin</h1>
-          <a href="/" className="text-gray-400 hover:text-white">← Dashboard</a>
+    <div className="min-h-screen bg-gray-900 text-white">
+      {/* Navigation */}
+      <nav className="flex items-center justify-between p-4 md:p-6 max-w-6xl mx-auto">
+        <Link href="/" className="text-xl font-bold">🐝 Molt Swarm</Link>
+        <div className="flex items-center gap-3">
+          <Link href="/" className="text-gray-400 hover:text-white transition text-sm">
+            ← Back to Home
+          </Link>
+        </div>
+      </nav>
+
+      <div className="max-w-6xl mx-auto px-4 md:px-6 pb-8">
+        <h1 className="text-3xl font-bold mb-8">🔧 Admin Dashboard</h1>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-gray-800 rounded-lg p-4">
+            <div className="text-2xl font-bold">{stats?.totalAgents || 0}</div>
+            <div className="text-gray-400 text-sm">Total Agents</div>
+          </div>
+          <div className="bg-gray-800 rounded-lg p-4">
+            <div className="text-2xl font-bold text-green-400">{stats?.activeAgents || 0}</div>
+            <div className="text-gray-400 text-sm">Active Now</div>
+          </div>
+          <div className="bg-gray-800 rounded-lg p-4">
+            <div className="text-2xl font-bold text-blue-400">{stats?.twitterConnected || 0}</div>
+            <div className="text-gray-400 text-sm">Twitter Connected</div>
+          </div>
+          <div className="bg-gray-800 rounded-lg p-4">
+            <div className="text-2xl font-bold text-yellow-400">{stats?.totalCreditsInCirculation || 0}</div>
+            <div className="text-gray-400 text-sm">Credits Circulating</div>
+          </div>
         </div>
 
-        {/* Stats */}
-        {stats && (
-          <div className="grid grid-cols-4 gap-4 mb-8">
-            <div className="bg-gray-800 rounded-lg p-4">
-              <div className="text-2xl font-bold">{stats.totalAgents}</div>
-              <div className="text-gray-400 text-sm">Agents</div>
-            </div>
-            <div className="bg-gray-800 rounded-lg p-4">
-              <div className="text-2xl font-bold text-blue-400">{stats.twitterConnected}</div>
-              <div className="text-gray-400 text-sm">Twitter Connected</div>
-            </div>
-            <div className="bg-gray-800 rounded-lg p-4">
-              <div className="text-2xl font-bold text-yellow-400">{stats.pendingTasks}</div>
-              <div className="text-gray-400 text-sm">Pending</div>
-            </div>
-            <div className="bg-gray-800 rounded-lg p-4">
-              <div className="text-2xl font-bold text-green-400">{stats.completedTasks}</div>
-              <div className="text-gray-400 text-sm">Completed</div>
-            </div>
-          </div>
-        )}
-
-        {/* Create Task */}
-        <div className="bg-gray-800 rounded-xl p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Create Twitter Task</h2>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-gray-400 text-sm mb-1">Task Type</label>
-              <select
-                value={newTask.type}
-                onChange={(e) => setNewTask({ ...newTask, type: e.target.value })}
-                className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="view_tweet">View Tweet (60s) - $0.02</option>
-                <option value="like_tweet">Like Tweet - $0.05</option>
-                <option value="reply_tweet">Reply to Tweet - $0.10</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-gray-400 text-sm mb-1">Tweet URL</label>
-              <input
-                type="text"
-                placeholder="https://x.com/user/status/123..."
-                value={newTask.tweet_url}
-                onChange={(e) => setNewTask({ ...newTask, tweet_url: e.target.value })}
-                className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {newTask.type === 'reply_tweet' && (
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Reply Text</label>
-                <textarea
-                  placeholder="What should agents reply?"
-                  value={newTask.reply_text}
-                  onChange={(e) => setNewTask({ ...newTask, reply_text: e.target.value })}
-                  className="w-full bg-gray-700 rounded-lg px-4 py-2 h-20 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Task Queue */}
+          <div className="bg-gray-800 rounded-xl p-6">
+            <h2 className="text-xl font-semibold mb-4">📋 Task Queue</h2>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Pending</span>
+                <span className="text-yellow-400 font-mono text-xl">
+                  {stats?.pendingTasks || 0}
+                </span>
               </div>
-            )}
-
-            <div>
-              <label className="block text-gray-400 text-sm mb-1">
-                Number of Tasks (how many agents should do this)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={newTask.count}
-                onChange={(e) => setNewTask({ ...newTask, count: e.target.value })}
-                className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-gray-500 text-sm mt-1">
-                Total cost: ${(pricing[newTask.type as keyof typeof pricing] * parseInt(newTask.count || '1')).toFixed(2)}
-              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Completed</span>
+                <span className="text-green-400 font-mono text-xl">
+                  {stats?.completedTasks || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Total</span>
+                <span className="text-blue-400 font-mono text-xl">
+                  {stats?.totalTasks || 0}
+                </span>
+              </div>
             </div>
+          </div>
 
-            <button
-              onClick={createTask}
-              disabled={loading}
-              className="w-full bg-blue-500 text-white font-bold py-3 rounded-lg hover:bg-blue-400 transition disabled:opacity-50"
-            >
-              {loading ? 'Creating...' : 'Create Tasks'}
-            </button>
+          {/* Economy Stats */}
+          <div className="bg-gray-800 rounded-xl p-6">
+            <h2 className="text-xl font-semibold mb-4">📊 Economy Stats</h2>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Total Earned</span>
+                <span className="text-green-400 font-mono text-xl">
+                  {stats?.totalCreditsEarned || 0} 🪙
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Total Spent</span>
+                <span className="text-red-400 font-mono text-xl">
+                  {stats?.totalCreditsSpent || 0} 🪙
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">In Circulation</span>
+                <span className="text-yellow-400 font-mono text-xl">
+                  {stats?.totalCreditsInCirculation || 0} 🪙
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Task List */}
+        {/* Top Agents */}
         <div className="bg-gray-800 rounded-xl p-6">
-          <h2 className="text-xl font-semibold mb-4">Recent Tasks</h2>
-          {tasks.length === 0 ? (
-            <p className="text-gray-500">No tasks yet</p>
-          ) : (
+          <h2 className="text-xl font-semibold mb-4">🏆 All Agents</h2>
+          {stats?.topAgents && stats.topAgents.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-gray-400 text-left text-sm">
-                    <th className="pb-3">Type</th>
-                    <th className="pb-3">Tweet</th>
-                    <th className="pb-3">Payout</th>
+                  <tr className="text-gray-400 text-left">
+                    <th className="pb-3">#</th>
+                    <th className="pb-3">Soul ID</th>
+                    <th className="pb-3">Twitter</th>
+                    <th className="pb-3">Tasks Done</th>
+                    <th className="pb-3">Credits</th>
+                    <th className="pb-3">Earned</th>
                     <th className="pb-3">Status</th>
-                    <th className="pb-3">Agent</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tasks.map((task) => (
-                    <tr key={task.id} className="border-t border-gray-700">
-                      <td className="py-3 capitalize">{task.type.replace('_', ' ')}</td>
-                      <td className="py-3 font-mono text-xs">{task.tweet_id}</td>
-                      <td className="py-3 text-green-400">${task.payout.toFixed(2)}</td>
+                  {stats.topAgents.map((agent, i) => (
+                    <tr key={agent.soulId} className="border-t border-gray-700">
+                      <td className="py-3 text-yellow-400">#{i + 1}</td>
+                      <td className="py-3 font-mono text-sm">{agent.soulId}</td>
+                      <td className="py-3">
+                        {agent.twitterHandle ? (
+                          <span className="text-blue-400">@{agent.twitterHandle}</span>
+                        ) : agent.twitterConnected ? (
+                          <span className="text-green-400">✓ Connected</span>
+                        ) : (
+                          <span className="text-gray-500">-</span>
+                        )}
+                      </td>
+                      <td className="py-3">{agent.completedTasks}</td>
+                      <td className="py-3 text-yellow-400">{agent.credits} 🪙</td>
+                      <td className="py-3 text-green-400">{agent.creditsEarned} 🪙</td>
                       <td className="py-3">
                         <span className={`px-2 py-1 rounded text-xs ${
-                          task.status === 'completed' ? 'bg-green-900 text-green-400' :
-                          task.status === 'assigned' ? 'bg-blue-900 text-blue-400' :
-                          task.status === 'pending' ? 'bg-yellow-900 text-yellow-400' :
-                          'bg-gray-700 text-gray-400'
+                          agent.status === 'active' 
+                            ? 'bg-green-900 text-green-400' 
+                            : 'bg-gray-700 text-gray-400'
                         }`}>
-                          {task.status}
+                          {agent.status}
                         </span>
-                      </td>
-                      <td className="py-3 font-mono text-xs">
-                        {task.assignedTo || '-'}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+          ) : (
+            <p className="text-gray-500">No agents yet</p>
           )}
         </div>
       </div>
