@@ -257,6 +257,28 @@ function DashboardContent() {
           <div className="text-4xl font-bold">{agent?.completedTasks || 0}</div>
         </div>
 
+        {/* Swarm Opt-Ins */}
+        <div className="bg-gray-800 rounded-xl p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">🌐 Swarm Opt-Ins</h2>
+            <Link 
+              href="/swarm-types"
+              className="text-sm text-blue-400 hover:text-blue-300 transition"
+            >
+              Manage →
+            </Link>
+          </div>
+          <p className="text-gray-400 text-sm mb-4">
+            Configure which swarm activities you participate in. Opt into more swarms to earn more credits.
+          </p>
+          <Link
+            href="/swarm-types"
+            className="block w-full bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/30 text-center py-3 rounded-lg transition"
+          >
+            🌐 View & Manage Swarm Types
+          </Link>
+        </div>
+
         {/* Settings */}
         <div className="bg-gray-800 rounded-xl p-6">
           <h2 className="text-xl font-semibold mb-4">⚙️ Settings</h2>
@@ -266,18 +288,24 @@ function DashboardContent() {
                 <p className="font-medium">Accept Reply Tasks</p>
                 <p className="text-gray-500 text-sm">Earn 15 credits per reply</p>
               </div>
-              <button className="bg-gray-700 px-4 py-2 rounded-lg text-sm">
-                Off
-              </button>
+              <Link 
+                href="/swarm-types"
+                className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm transition"
+              >
+                Configure
+              </Link>
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Accept Post Tasks (GEO)</p>
                 <p className="text-gray-500 text-sm">Earn 15 credits per post</p>
               </div>
-              <button className="bg-gray-700 px-4 py-2 rounded-lg text-sm">
-                Off
-              </button>
+              <Link 
+                href="/swarm-types"
+                className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm transition"
+              >
+                Configure
+              </Link>
             </div>
           </div>
         </div>

@@ -24,17 +24,52 @@ interface SwarmStats {
   }>;
 }
 
+interface StatsConfig {
+  enabled: boolean;
+  agentMultiplier: number;
+  activeMultiplier: number;
+  tasksMultiplier: number;
+  creditsMultiplier: number;
+  baseAgents: number;
+  baseActive: number;
+  baseTasks: number;
+}
+
+interface RealStats {
+  totalAgents: number;
+  activeAgents: number;
+  twitterConnected: number;
+  completedTasks: number;
+  totalCreditsInCirculation: number;
+}
+
 export default function AdminPage() {
   const [apiKey, setApiKey] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
   const [stats, setStats] = useState<SwarmStats | null>(null);
+  
+  // Stats inflation state
+  const [statsConfig, setStatsConfig] = useState<StatsConfig | null>(null);
+  const [realStats, setRealStats] = useState<RealStats | null>(null);
+  const [configSaving, setConfigSaving] = useState(false);
 
-  const authenticate = () => {
-    if (apiKey === '123') {
-      setAuthenticated(true);
-      fetchStats();
-    } else {
-      alert('Invalid key');
+  const authenticate = async () => {
+    // Verify against server
+    try {
+      const res = await fetch('/api/admin/stats-config', {
+        headers: { 'x-admin-key': apiKey },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAuthenticated(true);
+        setStatsConfig(data.config);
+        setRealStats(data.realStats);
+        fetchStats();
+      } else {
+        alert('Invalid key');
+      }
+    } catch {
+      alert('Authentication failed');
     }
   };
 
@@ -45,6 +80,40 @@ export default function AdminPage() {
       setStats(data);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
+    }
+  };
+
+  const saveStatsConfig = async () => {
+    if (!statsConfig) return;
+    setConfigSaving(true);
+    try {
+      const res = await fetch('/api/admin/stats-config', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-admin-key': apiKey,
+        },
+        body: JSON.stringify(statsConfig),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStatsConfig(data.config);
+        setRealStats(data.realStats);
+        alert('Config saved!');
+      } else {
+        alert('Failed to save config');
+      }
+    } catch (error) {
+      console.error('Save failed:', error);
+      alert('Save failed');
+    } finally {
+      setConfigSaving(false);
+    }
+  };
+
+  const updateConfig = (key: keyof StatsConfig, value: number | boolean) => {
+    if (statsConfig) {
+      setStatsConfig({ ...statsConfig, [key]: value });
     }
   };
 
@@ -95,22 +164,14 @@ export default function AdminPage() {
         <h1 className="text-3xl font-bold mb-8">🔧 Admin Dashboard</h1>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-4 mb-8 max-w-md">
           <div className="bg-gray-800 rounded-lg p-4">
             <div className="text-2xl font-bold">{stats?.totalAgents || 0}</div>
             <div className="text-gray-400 text-sm">Total Agents</div>
           </div>
           <div className="bg-gray-800 rounded-lg p-4">
-            <div className="text-2xl font-bold text-green-400">{stats?.activeAgents || 0}</div>
-            <div className="text-gray-400 text-sm">Active Now</div>
-          </div>
-          <div className="bg-gray-800 rounded-lg p-4">
             <div className="text-2xl font-bold text-blue-400">{stats?.twitterConnected || 0}</div>
             <div className="text-gray-400 text-sm">Twitter Connected</div>
-          </div>
-          <div className="bg-gray-800 rounded-lg p-4">
-            <div className="text-2xl font-bold text-yellow-400">{stats?.totalCreditsInCirculation || 0}</div>
-            <div className="text-gray-400 text-sm">Credits Circulating</div>
           </div>
         </div>
 
@@ -163,6 +224,91 @@ export default function AdminPage() {
                 </span>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Stats Boost Controls */}
+        <div className="bg-gray-800 rounded-xl p-6 mb-8">
+          <h2 className="text-xl font-semibold mb-4">🎭 Public Stats Boost</h2>
+          
+          <div className="space-y-6">
+            {/* Real vs Display Stats */}
+            <div className="grid grid-cols-2 gap-4 p-4 bg-gray-700/50 rounded-lg">
+              <div>
+                <h3 className="text-sm font-medium text-gray-400 mb-2">📊 Real Stats</h3>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Agents:</span>
+                    <span className="text-white font-mono">{realStats?.totalAgents || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Twitter:</span>
+                    <span className="text-white font-mono">{realStats?.twitterConnected || 0}</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-400 mb-2">🌐 Public Display</h3>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Agents:</span>
+                    <span className="text-purple-400 font-mono">
+                      {statsConfig?.enabled 
+                        ? (realStats?.totalAgents || 0) + (statsConfig?.baseAgents || 0)
+                        : realStats?.totalAgents || 0}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Twitter:</span>
+                    <span className="text-purple-400 font-mono">
+                      {statsConfig?.enabled 
+                        ? (realStats?.twitterConnected || 0) + (statsConfig?.baseAgents || 0)
+                        : realStats?.twitterConnected || 0}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Enable Toggle */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => updateConfig('enabled', !statsConfig?.enabled)}
+                className={`relative w-12 h-6 rounded-full transition ${
+                  statsConfig?.enabled ? 'bg-purple-600' : 'bg-gray-700'
+                }`}
+              >
+                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                  statsConfig?.enabled ? 'left-7' : 'left-1'
+                }`} />
+              </button>
+              <span className={statsConfig?.enabled ? 'text-purple-400' : 'text-gray-400'}>
+                {statsConfig?.enabled ? 'Boost Enabled' : 'Boost Disabled'}
+              </span>
+            </div>
+
+            {/* Base Agents (also applies to Twitter Connected) */}
+            <div className="max-w-xs">
+              <label className="block text-gray-400 text-sm mb-2">Add to Agents & Twitter Connected</label>
+              <input
+                type="number"
+                min="0"
+                value={statsConfig?.baseAgents || 0}
+                onChange={(e) => updateConfig('baseAgents', parseInt(e.target.value) || 0)}
+                className="w-full bg-gray-700 rounded px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="0"
+              />
+              <p className="text-gray-500 text-xs mt-2">This number gets added to both Agents and Twitter Connected</p>
+            </div>
+
+            {/* Save Button */}
+            <button
+              onClick={saveStatsConfig}
+              disabled={configSaving}
+              className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 disabled:text-gray-500 py-3 rounded-lg font-medium transition"
+            >
+              {configSaving ? 'Saving...' : 'Save'}
+            </button>
           </div>
         </div>
 

@@ -80,6 +80,32 @@ export const CREDIT_RATES = {
   buyRate: 0.012,     // $0.012 USD = 1 credit
 };
 
+// Public stats inflation config
+export interface PublicStatsConfig {
+  enabled: boolean;
+  agentMultiplier: number;      // e.g., 10 = show 10x actual agents
+  activeMultiplier: number;     // multiplier for active agents
+  tasksMultiplier: number;      // multiplier for completed tasks
+  creditsMultiplier: number;    // multiplier for credits in circulation
+  baseAgents: number;           // flat number to add (e.g., 500 base users)
+  baseActive: number;           // flat active to add
+  baseTasks: number;            // flat completed tasks to add
+}
+
+const DEFAULT_PUBLIC_STATS_CONFIG: PublicStatsConfig = {
+  enabled: false,
+  agentMultiplier: 1,
+  activeMultiplier: 1,
+  tasksMultiplier: 1,
+  creditsMultiplier: 1,
+  baseAgents: 0,
+  baseActive: 0,
+  baseTasks: 0,
+};
+
+// Admin key
+export const ADMIN_KEY = '123$';
+
 // Redis key prefixes
 const KEYS = {
   agent: (soulId: string) => `agent:${soulId}`,
@@ -87,6 +113,7 @@ const KEYS = {
   task: (taskId: string) => `task:${taskId}`,
   taskIndex: 'tasks:index',    // Set of all task IDs
   pendingTasks: 'tasks:pending', // Set of pending task IDs (for fast lookup)
+  publicStatsConfig: 'config:public_stats', // Stats inflation config
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -276,4 +303,304 @@ export async function getSwarmStats() {
     
     creditRates: CREDIT_RATES,
   };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PUBLIC STATS CONFIG (Inflation)
+// ═══════════════════════════════════════════════════════════════
+
+export async function getPublicStatsConfig(): Promise<PublicStatsConfig> {
+  const config = await redis.get<PublicStatsConfig>(KEYS.publicStatsConfig);
+  return config || DEFAULT_PUBLIC_STATS_CONFIG;
+}
+
+export async function setPublicStatsConfig(config: Partial<PublicStatsConfig>): Promise<PublicStatsConfig> {
+  const current = await getPublicStatsConfig();
+  const updated = { ...current, ...config };
+  await redis.set(KEYS.publicStatsConfig, updated);
+  return updated;
+}
+
+// Get stats with boost applied (for public display)
+export async function getPublicSwarmStats() {
+  const realStats = await getSwarmStats();
+  const config = await getPublicStatsConfig();
+  
+  if (!config.enabled) {
+    return realStats;
+  }
+  
+  // Apply base additions (baseAgents adds to both agents and twitter connected)
+  return {
+    ...realStats,
+    totalAgents: realStats.totalAgents + config.baseAgents,
+    twitterConnected: realStats.twitterConnected + config.baseAgents,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SWARM TYPES
+// ═══════════════════════════════════════════════════════════════
+
+export interface SwarmType {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: 'twitter' | 'reddit' | 'blogs' | 'github' | 'custom';
+  isBuiltIn: boolean;           // System swarm types vs user-created
+  createdBy?: string;           // Soul ID if user-created
+  createdAt: number;
+  active: boolean;
+  optInCount: number;           // Number of users opted in
+  settings?: {
+    requiresContent?: boolean;  // User needs to provide content
+    creditReward?: number;      // Credits earned per action
+    creditCost?: number;        // Credits to request action
+  };
+}
+
+export interface UserSwarmOptIn {
+  soulId: string;
+  swarmTypeId: string;
+  optedInAt: number;
+  active: boolean;
+  // User-specific settings for this swarm
+  settings?: {
+    contentUrls?: string[];     // URLs user wants promoted (blogs, repos, etc)
+    topics?: string[];          // Topics/keywords for content
+  };
+}
+
+// Default built-in swarm types
+const BUILT_IN_SWARM_TYPES: Omit<SwarmType, 'optInCount'>[] = [
+  {
+    id: 'twitter_views',
+    name: 'Twitter Views & Likes',
+    description: 'Get automatic views and likes on your tweets from the swarm',
+    icon: '𝕏',
+    category: 'twitter',
+    isBuiltIn: true,
+    createdAt: Date.now(),
+    active: true,
+    settings: { creditReward: 2, creditCost: 2 },
+  },
+  {
+    id: 'twitter_replies',
+    name: 'Twitter Replies',
+    description: 'Opt-in to receive and give thoughtful replies on tweets',
+    icon: '💬',
+    category: 'twitter',
+    isBuiltIn: true,
+    createdAt: Date.now(),
+    active: true,
+    settings: { creditReward: 15, creditCost: 15, requiresContent: false },
+  },
+  {
+    id: 'twitter_posts',
+    name: 'Twitter Posts',
+    description: 'Opt-in to post about products/topics for the swarm (GEO)',
+    icon: '📢',
+    category: 'twitter',
+    isBuiltIn: true,
+    createdAt: Date.now(),
+    active: true,
+    settings: { creditReward: 15, creditCost: 15, requiresContent: true },
+  },
+  {
+    id: 'reddit_upvotes',
+    name: 'Reddit Upvotes',
+    description: 'Upvote Reddit posts to help content gain visibility',
+    icon: '⬆',
+    category: 'reddit',
+    isBuiltIn: true,
+    createdAt: Date.now(),
+    active: true,
+    settings: { creditReward: 5, creditCost: 5 },
+  },
+  {
+    id: 'blog_backlinks',
+    name: 'Blog Backlinks',
+    description: 'Post articles or backlinks to each other\'s blog sites',
+    icon: '📝',
+    category: 'blogs',
+    isBuiltIn: true,
+    createdAt: Date.now(),
+    active: true,
+    settings: { creditReward: 20, creditCost: 20, requiresContent: true },
+  },
+  {
+    id: 'github_stars',
+    name: 'GitHub Stars & Activity',
+    description: 'Seed repos with stars and activity to boost visibility',
+    icon: '⭐',
+    category: 'github',
+    isBuiltIn: true,
+    createdAt: Date.now(),
+    active: true,
+    settings: { creditReward: 10, creditCost: 10, requiresContent: true },
+  },
+];
+
+// Redis keys for swarm types
+const SWARM_KEYS = {
+  swarmType: (id: string) => `swarmtype:${id}`,
+  swarmTypeIndex: 'swarmtypes:index',
+  userOptIn: (soulId: string, swarmTypeId: string) => `optins:${soulId}:${swarmTypeId}`,
+  userOptInsIndex: (soulId: string) => `optins:${soulId}:index`,
+  swarmTypeOptIns: (swarmTypeId: string) => `swarmtype:${swarmTypeId}:optins`,
+};
+
+// Initialize built-in swarm types if they don't exist
+export async function initSwarmTypes(): Promise<void> {
+  for (const swarmType of BUILT_IN_SWARM_TYPES) {
+    const existing = await redis.get<SwarmType>(SWARM_KEYS.swarmType(swarmType.id));
+    if (!existing) {
+      const fullSwarmType: SwarmType = { ...swarmType, optInCount: 0 };
+      await redis.set(SWARM_KEYS.swarmType(swarmType.id), fullSwarmType);
+      await redis.sadd(SWARM_KEYS.swarmTypeIndex, swarmType.id);
+    }
+  }
+}
+
+// Get all swarm types
+export async function getSwarmTypes(): Promise<SwarmType[]> {
+  // Ensure built-in types exist
+  await initSwarmTypes();
+  
+  const swarmTypeIds = await redis.smembers(SWARM_KEYS.swarmTypeIndex) as string[];
+  if (swarmTypeIds.length === 0) return [];
+  
+  const pipeline = swarmTypeIds.map(id => redis.get<SwarmType>(SWARM_KEYS.swarmType(id)));
+  const results = await Promise.all(pipeline);
+  
+  return results.filter((st): st is SwarmType => st !== null && st.active);
+}
+
+// Get a single swarm type
+export async function getSwarmType(id: string): Promise<SwarmType | null> {
+  return await redis.get<SwarmType>(SWARM_KEYS.swarmType(id));
+}
+
+// Create a custom swarm type
+export async function createSwarmType(data: {
+  name: string;
+  description: string;
+  icon: string;
+  category: SwarmType['category'];
+  createdBy: string;
+  settings?: SwarmType['settings'];
+}): Promise<SwarmType> {
+  const id = `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  const swarmType: SwarmType = {
+    id,
+    name: data.name,
+    description: data.description,
+    icon: data.icon,
+    category: data.category,
+    isBuiltIn: false,
+    createdBy: data.createdBy,
+    createdAt: Date.now(),
+    active: true,
+    optInCount: 0,
+    settings: data.settings,
+  };
+  
+  await redis.set(SWARM_KEYS.swarmType(id), swarmType);
+  await redis.sadd(SWARM_KEYS.swarmTypeIndex, id);
+  
+  return swarmType;
+}
+
+// Opt in to a swarm type
+export async function optInToSwarm(soulId: string, swarmTypeId: string, settings?: UserSwarmOptIn['settings']): Promise<UserSwarmOptIn | null> {
+  const swarmType = await getSwarmType(swarmTypeId);
+  if (!swarmType) return null;
+  
+  // Check if already opted in
+  const existingOptIn = await redis.get<UserSwarmOptIn>(SWARM_KEYS.userOptIn(soulId, swarmTypeId));
+  if (existingOptIn?.active) {
+    // Update settings if provided
+    if (settings) {
+      existingOptIn.settings = { ...existingOptIn.settings, ...settings };
+      await redis.set(SWARM_KEYS.userOptIn(soulId, swarmTypeId), existingOptIn);
+    }
+    return existingOptIn;
+  }
+  
+  const optIn: UserSwarmOptIn = {
+    soulId,
+    swarmTypeId,
+    optedInAt: Date.now(),
+    active: true,
+    settings,
+  };
+  
+  await redis.set(SWARM_KEYS.userOptIn(soulId, swarmTypeId), optIn);
+  await redis.sadd(SWARM_KEYS.userOptInsIndex(soulId), swarmTypeId);
+  await redis.sadd(SWARM_KEYS.swarmTypeOptIns(swarmTypeId), soulId);
+  
+  // Update opt-in count
+  swarmType.optInCount = (swarmType.optInCount || 0) + 1;
+  await redis.set(SWARM_KEYS.swarmType(swarmTypeId), swarmType);
+  
+  return optIn;
+}
+
+// Opt out of a swarm type
+export async function optOutOfSwarm(soulId: string, swarmTypeId: string): Promise<boolean> {
+  const optIn = await redis.get<UserSwarmOptIn>(SWARM_KEYS.userOptIn(soulId, swarmTypeId));
+  if (!optIn || !optIn.active) return false;
+  
+  optIn.active = false;
+  await redis.set(SWARM_KEYS.userOptIn(soulId, swarmTypeId), optIn);
+  await redis.srem(SWARM_KEYS.userOptInsIndex(soulId), swarmTypeId);
+  await redis.srem(SWARM_KEYS.swarmTypeOptIns(swarmTypeId), soulId);
+  
+  // Update opt-in count
+  const swarmType = await getSwarmType(swarmTypeId);
+  if (swarmType && swarmType.optInCount > 0) {
+    swarmType.optInCount -= 1;
+    await redis.set(SWARM_KEYS.swarmType(swarmTypeId), swarmType);
+  }
+  
+  return true;
+}
+
+// Get user's opt-ins
+export async function getUserOptIns(soulId: string): Promise<UserSwarmOptIn[]> {
+  const swarmTypeIds = await redis.smembers(SWARM_KEYS.userOptInsIndex(soulId)) as string[];
+  if (swarmTypeIds.length === 0) return [];
+  
+  const pipeline = swarmTypeIds.map(id => redis.get<UserSwarmOptIn>(SWARM_KEYS.userOptIn(soulId, id)));
+  const results = await Promise.all(pipeline);
+  
+  return results.filter((opt): opt is UserSwarmOptIn => opt !== null && opt.active);
+}
+
+// Check if user is opted into a swarm type
+export async function isUserOptedIn(soulId: string, swarmTypeId: string): Promise<boolean> {
+  const optIn = await redis.get<UserSwarmOptIn>(SWARM_KEYS.userOptIn(soulId, swarmTypeId));
+  return optIn?.active ?? false;
+}
+
+// Get all users opted into a swarm type
+export async function getSwarmTypeMembers(swarmTypeId: string): Promise<string[]> {
+  return await redis.smembers(SWARM_KEYS.swarmTypeOptIns(swarmTypeId)) as string[];
+}
+
+// Update user's swarm settings (content URLs, topics, etc)
+export async function updateUserSwarmSettings(
+  soulId: string,
+  swarmTypeId: string,
+  settings: UserSwarmOptIn['settings']
+): Promise<UserSwarmOptIn | null> {
+  const optIn = await redis.get<UserSwarmOptIn>(SWARM_KEYS.userOptIn(soulId, swarmTypeId));
+  if (!optIn || !optIn.active) return null;
+  
+  optIn.settings = { ...optIn.settings, ...settings };
+  await redis.set(SWARM_KEYS.userOptIn(soulId, swarmTypeId), optIn);
+  
+  return optIn;
 }
