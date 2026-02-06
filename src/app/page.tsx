@@ -186,14 +186,14 @@ export default function Dashboard() {
         </div>
 
         {/* Credit Economy - Collapsible */}
-        <div className={`${darkMode ? 'bg-gradient-to-r from-yellow-600/20 via-orange-600/20 to-yellow-600/20 border-yellow-600/30' : 'bg-amber-50 border-amber-200'} rounded-xl mb-8 border overflow-hidden`}>
+        <div className={`${darkMode ? 'bg-gradient-to-r from-yellow-600/20 via-orange-600/20 to-yellow-600/20 border-yellow-600/30' : 'bg-blue-50 border-blue-200'} rounded-xl mb-8 border overflow-hidden`}>
           <button
             onClick={() => setCreditsOpen(!creditsOpen)}
-            className={`w-full p-6 text-left ${darkMode ? 'hover:bg-white/5' : 'hover:bg-amber-100/50'} transition`}
+            className={`w-full p-6 text-left ${darkMode ? 'hover:bg-white/5' : 'hover:bg-blue-100/50'} transition`}
           >
             <div className="flex items-center justify-between mb-1">
               <h2 className="text-xl font-semibold">🪙 Credit Economy</h2>
-              <span className={`text-sm ${darkMode ? 'text-yellow-400' : 'text-amber-600'} flex items-center gap-2 shrink-0`}>
+              <span className={`text-sm ${darkMode ? 'text-yellow-400' : 'text-blue-600'} flex items-center gap-2 shrink-0`}>
                 {creditsOpen ? 'Collapse' : 'Expand'}
                 <span className={`text-lg transition-transform ${creditsOpen ? 'rotate-180' : ''}`}>▼</span>
               </span>
@@ -205,7 +205,7 @@ export default function Dashboard() {
             <div className="px-6 pb-6">
               <div className="grid md:grid-cols-3 gap-6">
                 <div>
-                  <h3 className={`${darkMode ? 'text-yellow-400' : 'text-amber-600'} font-semibold mb-2`}>Earn Credits</h3>
+                  <h3 className={`${darkMode ? 'text-yellow-400' : 'text-blue-600'} font-semibold mb-2`}>Earn Credits</h3>
                   <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm mb-2`}>Complete tasks for others:</p>
                   <ul className="space-y-1 text-sm">
                     <li>View Tweet → <span className={`${darkMode ? 'text-green-400' : 'text-green-600'}`}>+2 credits</span></li>
@@ -214,12 +214,12 @@ export default function Dashboard() {
                   </ul>
                 </div>
                 <div>
-                  <h3 className={`${darkMode ? 'text-yellow-400' : 'text-amber-600'} font-semibold mb-2`}>Spend Credits</h3>
+                  <h3 className={`${darkMode ? 'text-yellow-400' : 'text-blue-600'} font-semibold mb-2`}>Spend Credits</h3>
                   <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm mb-3`}>Want more than the free swarm engagement?</p>
-                  <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-lg p-3 text-sm ${darkMode ? '' : 'border border-amber-200'}`}>
+                  <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-lg p-3 text-sm ${darkMode ? '' : 'border border-blue-200'}`}>
                     <p className={`${darkMode ? 'text-white' : 'text-gray-900'} font-medium mb-2`}>🚀 Make it Go Viral</p>
                     <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} text-xs mb-2`}>Mobilize the entire swarm at once. Extended watch time signals high-quality content to the algorithm.</p>
-                    <p className={`${darkMode ? 'text-gray-500' : 'text-gray-500'} text-xs`}>Min: <span className={`${darkMode ? 'text-yellow-400' : 'text-amber-600'}`}>500 credits</span></p>
+                    <p className={`${darkMode ? 'text-gray-500' : 'text-gray-500'} text-xs`}>Min: <span className={`${darkMode ? 'text-yellow-400' : 'text-blue-600'}`}>500 credits</span></p>
                     <div className="mt-3 space-y-1 text-xs">
                       <div className="flex justify-between"><span className={`${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>500 credits</span><span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>~50 views, 15 likes, 5 replies</span></div>
                       <div className="flex justify-between"><span className={`${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>1,000 credits</span><span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>~100 views, 30 likes, 10 replies</span></div>
@@ -228,7 +228,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div>
-                  <h3 className={`${darkMode ? 'text-yellow-400' : 'text-amber-600'} font-semibold mb-2`}>Cash Out</h3>
+                  <h3 className={`${darkMode ? 'text-yellow-400' : 'text-blue-600'} font-semibold mb-2`}>Cash Out</h3>
                   <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm mb-2`}>Convert credits to crypto:</p>
                   <ul className="space-y-1 text-sm">
                     <li>Rate: <span className={`${darkMode ? 'text-green-400' : 'text-green-600'}`}>1 credit = $0.01</span></li>
