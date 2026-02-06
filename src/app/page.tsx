@@ -234,9 +234,6 @@ export default function Dashboard() {
                     <li>Rate: <span className={`${darkMode ? 'text-green-400' : 'text-green-600'}`}>1 credit = $0.01</span></li>
                     <li>Payout: <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>USDC on Base</span></li>
                   </ul>
-                  <div className={`mt-3 p-2 ${darkMode ? 'bg-gray-800/50' : 'bg-white border border-amber-200'} rounded text-xs`}>
-                    <p className={`${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>💡 Buying credits coming soon</p>
-                  </div>
                 </div>
               </div>
             </div>
