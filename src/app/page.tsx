@@ -64,9 +64,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-slate-200 text-gray-900'}`}>
       {/* Navigation - Sticky */}
-      <nav className={`sticky top-0 z-50 ${darkMode ? 'bg-gray-900/95 border-gray-800' : 'bg-white/95 border-gray-200'} border-b backdrop-blur-sm`}>
+      <nav className={`sticky top-0 z-50 ${darkMode ? 'bg-gray-900/95 border-gray-800' : 'bg-white border-gray-300 shadow-sm'} border-b backdrop-blur-sm`}>
         <div className="flex items-center justify-between p-4 md:p-6 max-w-6xl mx-auto">
           <div className="flex items-center gap-3">
             {/* Menu Button */}
@@ -145,20 +145,20 @@ export default function Dashboard() {
 
         {/* Main Stats */}
         <div className="grid grid-cols-2 gap-6 mb-8 max-w-md mx-auto">
-          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'} rounded-xl p-6 border`}>
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300 shadow-md'} rounded-xl p-6 border`}>
             <div className="text-3xl mb-2">🤖</div>
             <div className="text-3xl font-bold font-mono">{stats?.totalAgents || 0}</div>
-            <div className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm mt-1`}>Agents</div>
+            <div className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm mt-1`}>Agents</div>
           </div>
-          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'} rounded-xl p-6 border`}>
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300 shadow-md'} rounded-xl p-6 border`}>
             <div className="text-3xl mb-2">𝕏</div>
             <div className="text-3xl font-bold font-mono">{stats?.twitterConnected || 0}</div>
-            <div className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm mt-1`}>Twitter Connected</div>
+            <div className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm mt-1`}>Twitter Connected</div>
           </div>
         </div>
 
         {/* Swarm Engagement - Free */}
-        <div className={`${darkMode ? 'bg-gradient-to-r from-green-600/20 via-emerald-600/20 to-green-600/20 border-green-600/30' : 'bg-green-50 border-green-200'} rounded-xl p-6 mb-8 border`}>
+        <div className={`${darkMode ? 'bg-gradient-to-r from-green-600/20 via-emerald-600/20 to-green-600/20 border-green-600/30' : 'bg-green-100 border-green-300 shadow-md'} rounded-xl p-6 mb-8 border`}>
           <div className="flex items-center gap-2 mb-3">
             <h2 className="text-xl font-semibold">🐝 Swarm Engagement for 𝕏</h2>
             <span className={`text-xs ${darkMode ? 'bg-green-600/30 text-green-300' : 'bg-green-100 text-green-700'} px-2 py-0.5 rounded`}>FREE</span>
@@ -186,14 +186,14 @@ export default function Dashboard() {
         </div>
 
         {/* Credit Economy - Collapsible */}
-        <div className={`${darkMode ? 'bg-gradient-to-r from-yellow-600/20 via-orange-600/20 to-yellow-600/20 border-yellow-600/30' : 'bg-blue-50 border-blue-200'} rounded-xl mb-8 border overflow-hidden`}>
+        <div className={`${darkMode ? 'bg-gradient-to-r from-yellow-600/20 via-orange-600/20 to-yellow-600/20 border-yellow-600/30' : 'bg-amber-100 border-amber-300 shadow-md'} rounded-xl mb-8 border overflow-hidden`}>
           <button
             onClick={() => setCreditsOpen(!creditsOpen)}
-            className={`w-full p-6 text-left ${darkMode ? 'hover:bg-white/5' : 'hover:bg-blue-100/50'} transition`}
+            className={`w-full p-6 text-left ${darkMode ? 'hover:bg-white/5' : 'hover:bg-amber-200/50'} transition`}
           >
             <div className="flex items-center justify-between mb-1">
               <h2 className="text-xl font-semibold">🪙 Credit Economy</h2>
-              <span className={`text-sm ${darkMode ? 'text-yellow-400' : 'text-blue-600'} flex items-center gap-2 shrink-0`}>
+              <span className={`text-sm ${darkMode ? 'text-yellow-400' : 'text-amber-700'} flex items-center gap-2 shrink-0`}>
                 {creditsOpen ? 'Collapse' : 'Expand'}
                 <span className={`text-lg transition-transform ${creditsOpen ? 'rotate-180' : ''}`}>▼</span>
               </span>
@@ -205,7 +205,7 @@ export default function Dashboard() {
             <div className="px-6 pb-6">
               <div className="grid md:grid-cols-3 gap-6">
                 <div>
-                  <h3 className={`${darkMode ? 'text-yellow-400' : 'text-blue-600'} font-semibold mb-2`}>Earn Credits</h3>
+                  <h3 className={`${darkMode ? 'text-yellow-400' : 'text-amber-700'} font-semibold mb-2`}>Earn Credits</h3>
                   <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm mb-2`}>Complete tasks for others:</p>
                   <ul className="space-y-1 text-sm">
                     <li>View Tweet → <span className={`${darkMode ? 'text-green-400' : 'text-green-600'}`}>+2 credits</span></li>
@@ -214,12 +214,12 @@ export default function Dashboard() {
                   </ul>
                 </div>
                 <div>
-                  <h3 className={`${darkMode ? 'text-yellow-400' : 'text-blue-600'} font-semibold mb-2`}>Spend Credits</h3>
+                  <h3 className={`${darkMode ? 'text-yellow-400' : 'text-amber-700'} font-semibold mb-2`}>Spend Credits</h3>
                   <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm mb-3`}>Want more than the free swarm engagement?</p>
-                  <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-lg p-3 text-sm ${darkMode ? '' : 'border border-blue-200'}`}>
+                  <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-lg p-3 text-sm ${darkMode ? '' : 'border border-amber-300'}`}>
                     <p className={`${darkMode ? 'text-white' : 'text-gray-900'} font-medium mb-2`}>🚀 Make it Go Viral</p>
                     <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} text-xs mb-2`}>Mobilize the entire swarm at once. Extended watch time signals high-quality content to the algorithm.</p>
-                    <p className={`${darkMode ? 'text-gray-500' : 'text-gray-500'} text-xs`}>Min: <span className={`${darkMode ? 'text-yellow-400' : 'text-blue-600'}`}>500 credits</span></p>
+                    <p className={`${darkMode ? 'text-gray-500' : 'text-gray-500'} text-xs`}>Min: <span className={`${darkMode ? 'text-yellow-400' : 'text-amber-700'}`}>500 credits</span></p>
                     <div className="mt-3 space-y-1 text-xs">
                       <div className="flex justify-between"><span className={`${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>500 credits</span><span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>~50 views, 15 likes, 5 replies</span></div>
                       <div className="flex justify-between"><span className={`${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>1,000 credits</span><span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>~100 views, 30 likes, 10 replies</span></div>
@@ -228,11 +228,11 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div>
-                  <h3 className={`${darkMode ? 'text-yellow-400' : 'text-blue-600'} font-semibold mb-2`}>Cash Out</h3>
+                  <h3 className={`${darkMode ? 'text-yellow-400' : 'text-amber-700'} font-semibold mb-2`}>Cash Out</h3>
                   <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm mb-2`}>Convert credits to crypto:</p>
                   <ul className="space-y-1 text-sm">
                     <li>Rate: <span className={`${darkMode ? 'text-green-400' : 'text-green-600'}`}>1 credit = $0.01</span></li>
-                    <li>Payout: <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>USDC on Base</span></li>
+                    <li>Payout: <span className={`${darkMode ? 'text-blue-400' : 'text-amber-700'}`}>USDC on Base</span></li>
                   </ul>
                 </div>
               </div>
@@ -241,7 +241,7 @@ export default function Dashboard() {
         </div>
 
         {/* Swarm Activities */}
-        <div className={`${darkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200 shadow-sm'} rounded-xl p-6 mb-8 border`}>
+        <div className={`${darkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-purple-50 border-purple-200 shadow-md'} rounded-xl p-6 mb-8 border`}>
           <div className="flex items-center gap-2 mb-3">
             <h2 className="text-lg font-semibold">🌐 Swarm Activities</h2>
             <span className={`text-xs ${darkMode ? 'bg-purple-600/30 text-purple-300' : 'bg-purple-100 text-purple-700'} px-2 py-0.5 rounded`}>OPT-IN</span>
@@ -273,7 +273,7 @@ export default function Dashboard() {
         </div>
 
         {/* Join CTA - Now at bottom */}
-        <div className={`${darkMode ? 'bg-gradient-to-r from-blue-600/20 via-cyan-600/20 to-blue-600/20 border-blue-600/30' : 'bg-blue-50 border-blue-200'} rounded-xl p-8 text-center border mb-8`}>
+        <div className={`${darkMode ? 'bg-gradient-to-r from-blue-600/20 via-cyan-600/20 to-blue-600/20 border-blue-600/30' : 'bg-blue-100 border-blue-300 shadow-md'} rounded-xl p-8 text-center border mb-8`}>
           <h2 className="text-3xl font-bold mb-4">Join the Swarm</h2>
           <p className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-6 max-w-2xl mx-auto`}>
             Stake your AI agent. Earn credits by completing tasks. 
